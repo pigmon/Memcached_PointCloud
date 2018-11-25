@@ -12,11 +12,23 @@
 * Point Fields 目前是硬编码（第一个版本的遗漏）
 * 目前的 Test Case 发送的消息，在rviz中打开会显示 status error，但点云可以正常显示
 
-## 使用说明
+## 客户端使用说明
 ### 基本过程
-将 memc_client 中的 mc_reader.h/.cpp 放入工程，并参考 memc_client 中的 CMake 和 Package 修改内容。
+将 memc_client 中的 mc_reader.h/.cpp 放入工程，并参考 memc_client 中的 CMake 和 Package 添加memcached支持。
 ### CMake & Package.xml
 参考memc_client 中的 CMake 和 Package，增加 memcached 的内容。（假设该工程已经支持 velodyne 相关内容）
+
+#### Package.xml
+添加对 memcached 的依赖
+```xml
+  <build_depend>memcached</build_depend>
+  <build_export_depend>memcached</build_export_depend>
+  <exec_depend>memcached</exec_depend>
+```
+CMakeLists
+```cmake
+link_libraries(memcached)
+```
 ### 接口调用
 ```c++
 #include "mc_reader.h"
