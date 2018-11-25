@@ -1,16 +1,16 @@
 # Memcached_PointCloud
 
 ## 基本功能
-> memc_cloud: 将从 velodyne master 中得到的点云信息存储至 Memcached.
-> memc_client: 读取 memcached 中的点云数据，并转换成 ros 的 sensor_msgs::PointCloud2
+* memc_cloud: 将从 velodyne master 中得到的点云信息存储至 Memcached.
+* memc_client: 读取 memcached 中的点云数据，并转换成 ros 的 sensor_msgs::PointCloud2
 
 ## TODO List
-> 目前基础数据是从 PointCloud2 的消息中得到的，正式使用应从 velodyne master 中直接获取，避免一次消息接收。
-> 优化读取过程的占用时间
+* 目前基础数据是从 PointCloud2 的消息中得到的，正式使用应从 velodyne master 中直接获取，避免一次消息接收。
+* 优化读取过程的占用时间
 
 ## Bug List
-> Point Fields 目前是硬编码（第一个版本的遗漏）
-> 目前的 Test Case 发送的消息，在rviz中打开会显示 status error，但点云可以正常显示
+* Point Fields 目前是硬编码（第一个版本的遗漏）
+* 目前的 Test Case 发送的消息，在rviz中打开会显示 status error，但点云可以正常显示
 
 ## 使用说明
 ### 基本过程
