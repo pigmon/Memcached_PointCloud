@@ -7,6 +7,7 @@
 ## TODO List
 * 目前基础数据是从 PointCloud2 的消息中得到的，正式使用应从 velodyne master 中直接获取，避免一次消息接收。
 * 优化读取过程的占用时间
+* 添加读取至 pcl 格式的接口
 
 ## Bug List
 * Point Fields 目前是硬编码（第一个版本的遗漏）
