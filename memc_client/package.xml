@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>read_memc</name>
+  <version>0.0.0</version>
+  <description>Read Memcached</description>
+
+  <maintainer email="pigmon@todo.todo">pigmon</maintainer>
+
+
+  <license>TODO</license>
+
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>memcached</build_depend>
+  <build_depend>pcl_ros</build_depend>
+
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>memcached</build_export_depend>
+  <build_export_depend>pcl_ros</build_export_depend>
+
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>memcached</exec_depend>
+  <exec_depend>pcl_ros</exec_depend>
+
+  <export>
+
+  </export>
+</package>
