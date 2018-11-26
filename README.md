@@ -1,5 +1,10 @@
 # Memcached_PointCloud
 
+## 1026 
+memc_cloud/src/pcl_cache.cpp
+不通过 ros_velodyne_driver，直接从雷达读取数据至 PCL。
+写入速度测试，在大数据量中连续写入仍会发生 40ms 写入时间的问题。
+
 ## 基本功能
 * memc_cloud: 将从 velodyne master 中得到的点云信息存储至 Memcached.
 * memc_client: 读取 memcached 中的点云数据，并转换成 ros 的 sensor_msgs::PointCloud2
