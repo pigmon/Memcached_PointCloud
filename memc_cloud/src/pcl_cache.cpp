@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -11,14 +12,16 @@
 
 #include <libmemcached/memcached.h>
 // pcl::PointXYZ, pcl::PointXYZI, pcl::PointXYZRGBA
-typedef pcl::PointXYZ PointType;
+typedef pcl::PointXYZI PointType;
+
 
 ros::Publisher Pubber;
-memcached_st *memc, *memc2;
-memcached_server_st *server, *server2;
+memcached_st *memc;
+memcached_server_st *server;
 memcached_return rc;
 
 uint32_t flags;
+int type_id;
 
 int main(int argc, char *argv[])
 {
@@ -30,11 +33,6 @@ int main(int argc, char *argv[])
 	rc = memcached_server_push(memc, server);
 	memcached_server_list_free(server);
 
-	memc2 = memcached_create(NULL);
-	server2 = memcached_server_list_append(NULL, "localhost", 11312, &rc);
-	rc = memcached_server_push(memc2, server2);
-	memcached_server_list_free(server2);
-
 	ros::NodeHandle nh;
 	Pubber = nh.advertise<sensor_msgs::PointCloud2>("mc_testcase", 10);
 
@@ -42,6 +40,8 @@ int main(int argc, char *argv[])
 	std::string port("2368");
 
 	pcl::PointCloud<PointType>::ConstPtr cloud_;
+	const std::type_info &type = typeid(PointType);
+	type_id = (type == typeid(pcl::PointXYZ)) ? 0 : 1; // ignore PointXYZRGBA for now
 
 	// Retrieved Point Cloud Callback Function
 	boost::mutex mutex;
@@ -49,31 +49,100 @@ int main(int argc, char *argv[])
 		[&cloud_, &mutex](const pcl::PointCloud<PointType>::ConstPtr &ptr) {
 			boost::mutex::scoped_lock lock(mutex);
 			cloud_ = ptr;
-
+			
+			double start_time = ros::Time::now().toSec();
 			pcl::PCLPointCloud2 pcl_pc2;
 			toPCLPointCloud2(*cloud_, pcl_pc2);
-			//ROS_INFO("Size of PointT: %ld", sizeof(PointType));
-			//ROS_INFO("raw data len: %ld", cloud_->points.size());
-			//ROS_INFO("data len: %ld", pcl_pc2.data.size());
-			double start_time = ros::Time::now().toSec();
-			rc = memcached_set(memc, "data_test_0", 11, (const char*)(pcl_pc2.data.data()), pcl_pc2.data.size() / 2, (time_t)0, flags);
+
+			std::ostringstream ss;
+			// header
+			ss << "#" << pcl_pc2.header.seq << "_";
+			pcl_conversions::toPCL(ros::Time::now(), pcl_pc2.header.stamp);
+			ss << pcl_pc2.header.stamp << "_";
+			ss << "velodyne_";
+			// info
+			ss << type_id << "_";
+			ss << pcl_pc2.width << "_";
+			ss << pcl_pc2.height << "_";
+			ss << pcl_pc2.point_step << "_";
+			ss << pcl_pc2.row_step << "_";
+			ss << (int)(pcl_pc2.is_bigendian) << "_";
+			ss << (int)(pcl_pc2.is_dense) << "#";
+
+			std::string info_str = ss.str();
+			const char* info_data = info_str.c_str();
+			ROS_INFO("%s", info_data);
+
+			rc = memcached_set(memc, "pcinfo", 6, info_data, info_str.length(), (time_t)0, flags);
+			if (rc != MEMCACHED_SUCCESS)
+				ROS_INFO("Cache Failed. %s", memcached_strerror(memc, rc));
+
+
+			// data
+			uint32_t block_count = 20;
+			size_t block_size = pcl_pc2.data.size() / block_count;
+			size_t remain_size = pcl_pc2.data.size() - block_size * (block_count - 1);
+			ROS_INFO("Block Size: %ld, Remain Size: %ld", block_size, remain_size);
+
+			
+			for (int i = 0; i < block_count - 1; i++)
+			{
+				std::ostringstream ss_key;
+				ss_key << "data_" << i;
+				std::string key = ss_key.str();
+				rc = memcached_set(memc, key.c_str(), key.length(), 
+					(const char*)(pcl_pc2.data.data() + block_size * i), block_size, (time_t)0, flags);
+
+				if (rc != MEMCACHED_SUCCESS)
+					std::cout << key << " store failed with : " << memcached_strerror(memc, rc) << std::endl;
+				//else 
+				//	std::cout << key << " Stored.\n";
+
+				ss_key.clear();
+			}
+
+			std::ostringstream final_key_ss;
+			final_key_ss << "data_" << block_count - 1;
+			std::string key = final_key_ss.str();
+			rc = memcached_set(memc, key.c_str(), key.length(), 
+				(const char*)(pcl_pc2.data.data() + block_size * (block_count - 1)), remain_size, (time_t)0, flags);	
+			final_key_ss.clear();		
+			if (rc != MEMCACHED_SUCCESS)
+				std::cout << key << " store failed with : " << memcached_strerror(memc, rc) << std::endl;
+			//else 
+			//	std::cout << key << " Stored.\n";
+
+
+			/*
+			rc = memcached_set(memc, "data_0", 6, (const char*)(pcl_pc2.data.data()), 
+				block_size, (time_t)0, flags);
+			rc = memcached_set(memc, "data_1", 6, (const char*)(pcl_pc2.data.data() + block_size), 
+				block_size, (time_t)0, flags);
+			rc = memcached_set(memc, "data_2", 6, (const char*)(pcl_pc2.data.data() + block_size * 2), 
+				block_size, (time_t)0, flags);
+			rc = memcached_set(memc, "data_3", 6, (const char*)(pcl_pc2.data.data() + block_size * 3), 
+				block_size, (time_t)0, flags);
+			rc = memcached_set(memc, "data_4", 6, (const char*)(pcl_pc2.data.data() + block_size * 4), 
+				block_size, (time_t)0, flags);
+			rc = memcached_set(memc, "data_5", 6, (const char*)(pcl_pc2.data.data() + block_size * 5), 
+				block_size, (time_t)0, flags);
+			rc = memcached_set(memc, "data_6", 6, (const char*)(pcl_pc2.data.data() + block_size * 6), 
+				block_size, (time_t)0, flags);
+			rc = memcached_set(memc, "data_7", 6, (const char*)(pcl_pc2.data.data() + block_size * 7), 
+				block_size, (time_t)0, flags);
+			rc = memcached_set(memc, "data_8", 6, (const char*)(pcl_pc2.data.data() + block_size * 8), 
+				block_size, (time_t)0, flags);
+			rc = memcached_set(memc, "data_9", 6, (const char*)(pcl_pc2.data.data() + block_size * 9), 
+				remain_size, (time_t)0, flags);
+			*/
 			double step1_time = ros::Time::now().toSec();
 			double dur = step1_time - start_time;
 			ROS_INFO("Duration: %f ms", dur * 1000);
 
-			if (rc != MEMCACHED_SUCCESS)
-				ROS_INFO("Cache Failed. %s", memcached_strerror(memc, rc));
-			/*
-			rc = memcached_set(memc2, "data_test_1", 11, (const char*)(pcl_pc2.data.data() + pcl_pc2.data.size() / 2), pcl_pc2.data.size() - pcl_pc2.data.size() / 2, (time_t)0, flags);
-			dur = ros::Time::now().toSec() - step1_time;
-			ROS_INFO("Duration 2 : %f ms", dur * 1000);
-
-			if (rc != MEMCACHED_SUCCESS)
-				ROS_INFO("Cache Failed. %s", memcached_strerror(memc, rc));
-			*/
+			//if (rc != MEMCACHED_SUCCESS)
+			//	ROS_INFO("Cache Failed. %s", memcached_strerror(memc, rc));
 			/*
 			sensor_msgs::PointCloud2 msg;
-
 
 			msg.header.seq = pcl_pc2.header.seq;
 			msg.header.frame_id = "velodyne";
@@ -113,7 +182,6 @@ int main(int argc, char *argv[])
 	grabber->stop();
 
 	memcached_free(memc);
-	memcached_free(memc2);
 
 	// Disconnect Callback Function
 	if (connection.connected())

@@ -50,8 +50,12 @@ endif()
 ## Testing ##
 #############
 
-add_executable(pc_cache 
-	include/mc_pointcloud2.h src/mc_pointcloud2.cpp 
-	include/mc.h src/mc.cpp
-	src/main.cpp)
-target_link_libraries(pc_cache ${catkin_LIBRARIES})
+#add_executable(pc_cache 
+	#include/mc_pointcloud2.h src/mc_pointcloud2.cpp 
+	#include/mc.h src/mc.cpp
+	#src/main.cpp)
+#target_link_libraries(pc_cache ${catkin_LIBRARIES})
+
+
+add_executable(test_pcl src/pcl_cache.cpp)
+target_link_libraries(test_pcl ${catkin_LIBRARIES})

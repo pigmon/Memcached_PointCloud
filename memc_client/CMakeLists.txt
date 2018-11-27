@@ -50,7 +50,10 @@ endif()
 ## Testing ##
 #############
 
-add_executable(pc_read 
-	include/mc_reader.h src/mc_reader.cpp
-	src/main.cpp)
-target_link_libraries(pc_read ${catkin_LIBRARIES})
+#add_executable(pc_read 
+#	include/mc_reader.h src/mc_reader.cpp
+#	src/main.cpp)
+#target_link_libraries(pc_read ${catkin_LIBRARIES})
+
+add_executable(test_read src/test.cpp)
+target_link_libraries(test_read ${catkin_LIBRARIES})
